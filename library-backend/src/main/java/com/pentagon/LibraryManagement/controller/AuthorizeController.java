@@ -3,7 +3,7 @@ package com.pentagon.LibraryManagement.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,10 +12,10 @@ import com.pentagon.LibraryManagement.dto.LoginResponse;
 
 import com.pentagon.LibraryManagement.DataTransferObjectDTO.ResponseStructure;
 import com.pentagon.LibraryManagement.Service.UsersService;
+import com.pentagon.LibraryManagement.dto.ChangePasswordRequest;
 import com.pentagon.LibraryManagement.dto.LoginRequest;
 import com.pentagon.LibraryManagement.entity.Users;
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
 public class AuthorizeController {
 	@Autowired
     private UsersService usersService;
@@ -68,5 +68,16 @@ public class AuthorizeController {
 
         	return new ResponseEntity<>(responsef, HttpStatus.UNAUTHORIZED);
         }
+    }
+
+    /**
+     * Authenticated users change their own password. This route stays available
+     * while a member still has a staff-issued temporary password.
+     */
+    @PostMapping("/change-password")
+    public ResponseEntity<ResponseStructure<Void>> changePassword(
+            @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+        return usersService.changePassword(authentication.getName(), request);
     }
 }

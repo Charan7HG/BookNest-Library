@@ -37,12 +37,26 @@ public class Users {
 	@JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
 	private String password;
 
+	/**
+	 * True when an ADMIN or LIBRARIAN has issued a temporary password and the
+	 * member has not chosen a permanent one yet. Existing users default to false.
+	 */
+	private boolean passwordChangeRequired = false;
+
 	public String getPassword() {
 		return password;
 	}
 
 	public void setPassword(String password) {
 		this.password =password;
+	}
+
+	public boolean isPasswordChangeRequired() {
+		return passwordChangeRequired;
+	}
+
+	public void setPasswordChangeRequired(boolean passwordChangeRequired) {
+		this.passwordChangeRequired = passwordChangeRequired;
 	}
 
 	public int getId() {

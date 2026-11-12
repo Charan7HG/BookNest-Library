@@ -119,4 +119,42 @@ class FlywayMigrationConfigurationTests {
 		assertFalse(sql.contains("truncate"));
 		assertFalse(sql.contains("delete from"));
 	}
+
+	@Test
+	void v4AddsPasswordChangeRequiredWithASafeDefault() throws IOException {
+		Path migration = Path.of("src/main/resources/db/migration/V4__add_password_change_required.sql");
+		assertTrue(Files.exists(migration), "V4 migration must exist");
+
+		String sql = Files.readString(migration).toLowerCase();
+
+		assertTrue(sql.contains("add column password_change_required boolean"));
+		assertTrue(sql.contains("default false"), "Existing and new users must default to no forced change");
+		assertFalse(sql.contains("drop table"));
+		assertFalse(sql.contains("truncate"));
+		assertFalse(sql.contains("delete from"));
+	}
+
+	@Test
+	void v5AddsPasswordResetRequestsWithPendingOnlyUniqueIndex() throws IOException {
+		Path migration = Path.of("src/main/resources/db/migration/V5__add_password_reset_requests.sql");
+		assertTrue(Files.exists(migration), "V5 migration must exist");
+
+		String sql = Files.readString(migration).toLowerCase();
+
+		assertTrue(sql.contains("create table public.password_reset_request"));
+		for (String column : List.of("user_id", "requested_at", "status", "reviewed_by", "reviewed_at")) {
+			assertTrue(sql.contains(column), "Missing password_reset_request column: " + column);
+		}
+		for (String status : List.of("pending", "approved", "rejected")) {
+			assertTrue(sql.contains("'" + status + "'"), "Missing request status: " + status);
+		}
+		assertTrue(sql.contains("references public.users(id)"));
+		assertTrue(sql.contains("create unique index uq_password_reset_request_pending_user"));
+		assertTrue(sql.contains("where status = 'pending'"),
+				"The unique index must only cover PENDING requests so history is preserved");
+
+		assertFalse(sql.contains("drop table"));
+		assertFalse(sql.contains("truncate"));
+		assertFalse(sql.contains("delete from"));
+	}
 }

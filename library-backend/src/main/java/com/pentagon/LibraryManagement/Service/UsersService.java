@@ -1,5 +1,6 @@
 package com.pentagon.LibraryManagement.Service;
 
+import java.security.SecureRandom;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,10 +12,21 @@ import org.springframework.stereotype.Service;
 
 import com.pentagon.LibraryManagement.DAO.UsersDAO;
 import com.pentagon.LibraryManagement.DataTransferObjectDTO.ResponseStructure;
+import com.pentagon.LibraryManagement.dto.ChangePasswordRequest;
+import com.pentagon.LibraryManagement.entity.Role;
 import com.pentagon.LibraryManagement.entity.Users;
 
 @Service
 public class UsersService {
+
+	// Cryptographically secure generator for staff-issued temporary passwords.
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+	// 16 characters from an unambiguous alphabet gives a strong one-time password
+	// while staying easy to read aloud or type.
+	private static final char[] TEMP_PASSWORD_ALPHABET =
+			"ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*".toCharArray();
+	private static final int TEMP_PASSWORD_LENGTH = 16;
 
 	@Autowired
 	private UsersDAO ur;
@@ -32,8 +44,9 @@ public class UsersService {
 		}
 
 		u.setPassword(passwordEncoder.encode(u.getPassword()));
+		u.setPasswordChangeRequired(false);
 		if (u.getRole() == null) {
-			u.setRole(com.pentagon.LibraryManagement.entity.Role.MEMBER);
+			u.setRole(Role.MEMBER);
 		}
 
 		Users user;
@@ -83,6 +96,8 @@ public class UsersService {
 			} else {
 				u.setPassword(passwordEncoder.encode(u.getPassword()));
 			}
+			// The forced-change flag is only changed by the reset/change-password flows.
+			u.setPasswordChangeRequired(existing.isPasswordChangeRequired());
 			Users user = ur.update(u);
 			ResponseStructure<Users> response = new ResponseStructure<Users>();
 			response.setStatuscode(HttpStatus.OK.value());
@@ -160,41 +175,68 @@ public class UsersService {
 	}
 
 	/**
-	 * Forgot Password endpoint.
-	 * Accepts registered email and new password.
-	 * Finds user by email, encodes new password with BCrypt, updates only the password field.
-	 * Does NOT verify account ownership (intentional for unauthenticated reset flow).
-	 * Does not return password or password hash in response.
+	 * Applies a fresh staff-issued temporary password to a member.
+	 *
+	 * This method is only called from the approved password-reset request
+	 * workflow. There is deliberately no HTTP endpoint that calls it directly,
+	 * so a password can never be reset without an approved request.
+	 *
+	 * The plaintext value is returned to the caller for the one-time response.
+	 * Only the BCrypt hash is persisted, and nothing is logged.
 	 */
-	public ResponseEntity<ResponseStructure<Users>> forgotPassword(Users request) {
-		String email = request.getProfile().getEmail();
-		String newPassword = request.getPassword();
+	public String applyTemporaryPassword(Users target) {
+		String temporaryPassword = generateTemporaryPassword();
+		target.setPassword(passwordEncoder.encode(temporaryPassword));
+		target.setPasswordChangeRequired(true);
+		ur.update(target);
+		return temporaryPassword;
+	}
 
-		if (newPassword == null || newPassword.isBlank()) {
-			ResponseStructure<Users> response = new ResponseStructure<Users>();
-			response.setStatuscode(HttpStatus.BAD_REQUEST.value());
-			response.setMessage("Password is required");
-			response.setData(null);
-			return new ResponseEntity<ResponseStructure<Users>>(response, HttpStatus.BAD_REQUEST);
+	/**
+	 * Authenticated password change for the current user. The user is taken from
+	 * the JWT, so one account can never change another account's password here.
+	 * Clearing the forced-change flag restores normal access.
+	 */
+	public ResponseEntity<ResponseStructure<Void>> changePassword(String email, ChangePasswordRequest request) {
+		if (request == null || request.getCurrentPassword() == null || request.getCurrentPassword().isBlank()
+				|| request.getNewPassword() == null || request.getNewPassword().isBlank()) {
+			return passwordChangeError(HttpStatus.BAD_REQUEST,
+					"Current password and new password are required");
 		}
 
-		Users existing = ur.findByEmail(email);
-		if (existing == null) {
-			ResponseStructure<Users> response = new ResponseStructure<Users>();
-			response.setStatuscode(HttpStatus.NOT_FOUND.value());
-			response.setMessage("User not found with email: " + email);
-			response.setData(null);
-			return new ResponseEntity<ResponseStructure<Users>>(response, HttpStatus.NOT_FOUND);
+		Users user = ur.findByEmail(email);
+		if (user == null) {
+			return passwordChangeError(HttpStatus.NOT_FOUND, "User not found");
+		}
+		if (user.getPassword() == null
+				|| !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+			return passwordChangeError(HttpStatus.BAD_REQUEST, "Current password is incorrect");
 		}
 
-		// Update only the password field; preserve all other user information
-		existing.setPassword(passwordEncoder.encode(newPassword));
-		Users updated = ur.update(existing);
+		user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+		user.setPasswordChangeRequired(false);
+		ur.update(user);
 
-		ResponseStructure<Users> response = new ResponseStructure<Users>();
+		ResponseStructure<Void> response = new ResponseStructure<>();
 		response.setStatuscode(HttpStatus.OK.value());
-		response.setMessage("Password updated successfully");
-		response.setData(updated);
-		return new ResponseEntity<ResponseStructure<Users>>(response, HttpStatus.OK);
+		response.setMessage("Password changed successfully");
+		response.setData(null);
+		return new ResponseEntity<>(response, HttpStatus.OK);
+	}
+
+	private String generateTemporaryPassword() {
+		StringBuilder password = new StringBuilder(TEMP_PASSWORD_LENGTH);
+		for (int i = 0; i < TEMP_PASSWORD_LENGTH; i++) {
+			password.append(TEMP_PASSWORD_ALPHABET[SECURE_RANDOM.nextInt(TEMP_PASSWORD_ALPHABET.length)]);
+		}
+		return password.toString();
+	}
+
+	private ResponseEntity<ResponseStructure<Void>> passwordChangeError(HttpStatus status, String message) {
+		ResponseStructure<Void> response = new ResponseStructure<>();
+		response.setStatuscode(status.value());
+		response.setMessage(message);
+		response.setData(null);
+		return new ResponseEntity<>(response, status);
 	}
 }

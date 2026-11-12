@@ -15,7 +15,7 @@ import org.springframework.test.context.DynamicPropertySource;
 
 /**
  * Runs migrations against a disposable clone of the existing Library database.
- * This test never writes application data; it only lets Flyway apply V1-V3 and
+ * This test never writes application data; it only lets Flyway apply V1-V5 and
  * verifies that the pre-existing borrowing records survived unchanged.
  */
 @SpringBootTest
@@ -37,7 +37,7 @@ class LegacyCloneMigrationTests {
         // src/test/resources/application.properties replaces the main file, so the
         // production baseline settings must be repeated here. This is exactly the
         // path a real pre-Flyway Library database takes: V1 is recorded as the
-        // baseline and V2/V3 are applied on top.
+        // baseline and V2/V3/V4/V5 are applied on top.
         registry.add("spring.flyway.baseline-on-migrate", () -> "true");
         registry.add("spring.flyway.baseline-version", () -> "1");
         registry.add("spring.flyway.baseline-description", () -> "Existing Library schema baseline");
@@ -54,7 +54,7 @@ class LegacyCloneMigrationTests {
         List<String> versions = jdbcTemplate.queryForList(
                 "select version from flyway_schema_history where success = true order by installed_rank",
                 String.class);
-        assertEquals(List.of("1", "2", "3"), versions);
+        assertEquals(List.of("1", "2", "3", "4", "5"), versions);
 
         List<Integer> legacyBorrowedBooks = jdbcTemplate.queryForList(
                 "select id from book where user_id = 13 order by id", Integer.class);
@@ -84,5 +84,10 @@ class LegacyCloneMigrationTests {
                 "select count(*) from borrow_request", Integer.class);
         assertNotNull(requests);
         assertEquals(0, requests);
+
+        Integer passwordResetRequests = jdbcTemplate.queryForObject(
+                "select count(*) from password_reset_request", Integer.class);
+        assertNotNull(passwordResetRequests);
+        assertEquals(0, passwordResetRequests);
     }
 }

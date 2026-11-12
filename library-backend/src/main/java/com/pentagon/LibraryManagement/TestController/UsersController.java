@@ -58,10 +58,4 @@ public class UsersController {
 	public ResponseEntity<ResponseStructure<String>> deleteUser(@PathVariable int id) {
 		return us.deleteUser(id);
 	}
-
-	@PostMapping("/forgot-password")
-	public ResponseEntity<ResponseStructure<Users>> forgotPassword(
-			@RequestBody Users request) {
-		return us.forgotPassword(request);
-	}
 }

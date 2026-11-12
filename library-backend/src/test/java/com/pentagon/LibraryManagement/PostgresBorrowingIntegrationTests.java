@@ -101,8 +101,8 @@ class PostgresBorrowingIntegrationTests {
     @BeforeEach
     void setUp() {
         SecurityContextHolder.clearContext();
-        jdbcTemplate.execute("truncate table borrow_request, loan, book_copy, book, book_category, users, profile "
-                + "restart identity cascade");
+        jdbcTemplate.execute("truncate table password_reset_request, borrow_request, loan, book_copy, book, "
+                + "book_category, users, profile restart identity cascade");
 
         String suffix = UUID.randomUUID().toString();
         member = account("member-" + suffix + "@example.test", Role.MEMBER);
@@ -115,13 +115,13 @@ class PostgresBorrowingIntegrationTests {
     }
 
     @Test
-    void flywayMigratesV1V2AndV3AndHibernateValidatesTheSchema() {
+    void flywayMigratesAllVersionsAndHibernateValidatesTheSchema() {
         List<String> versions = jdbcTemplate.queryForList(
                 "select version from flyway_schema_history where success = true order by installed_rank",
                 String.class);
-        assertEquals(List.of("1", "2", "3"), versions);
+        assertEquals(List.of("1", "2", "3", "4", "5"), versions);
 
-        for (String table : List.of("book_copy", "loan", "borrow_request")) {
+        for (String table : List.of("book_copy", "loan", "borrow_request", "password_reset_request")) {
             Integer count = jdbcTemplate.queryForObject(
                     "select count(*) from information_schema.tables "
                             + "where table_schema = 'public' and table_name = ?",
@@ -129,6 +129,14 @@ class PostgresBorrowingIntegrationTests {
             assertNotNull(count);
             assertEquals(1, count, "Missing table: " + table);
         }
+
+        Integer passwordChangeColumn = jdbcTemplate.queryForObject(
+                "select count(*) from information_schema.columns "
+                        + "where table_schema = 'public' and table_name = 'users' "
+                        + "and column_name = 'password_change_required'",
+                Integer.class);
+        assertNotNull(passwordChangeColumn);
+        assertEquals(1, passwordChangeColumn, "Missing users.password_change_required column");
 
         String indexDefinition = jdbcTemplate.queryForObject(
                 "select indexdef from pg_indexes "
@@ -146,6 +154,16 @@ class PostgresBorrowingIntegrationTests {
         assertNotNull(loanIndex);
         assertTrue(loanIndex.toUpperCase().contains("WHERE"));
         assertTrue(loanIndex.toUpperCase().contains("ACTIVE"));
+
+        String passwordResetIndex = jdbcTemplate.queryForObject(
+                "select indexdef from pg_indexes "
+                        + "where schemaname = 'public' "
+                        + "and indexname = 'uq_password_reset_request_pending_user'",
+                String.class);
+        assertNotNull(passwordResetIndex);
+        assertTrue(passwordResetIndex.contains("UNIQUE"));
+        assertTrue(passwordResetIndex.toUpperCase().contains("WHERE"));
+        assertTrue(passwordResetIndex.toUpperCase().contains("PENDING"));
     }
 
     @Test

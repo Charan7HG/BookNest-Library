@@ -28,6 +28,9 @@ public class SecurityConfig {
     @Autowired
     private JwtFilter jwtFilter;
 
+    @Autowired
+    private PasswordChangeRequiredFilter passwordChangeRequiredFilter;
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
@@ -46,11 +49,30 @@ public class SecurityConfig {
                         response.setStatus(HttpServletResponse.SC_FORBIDDEN)))
 
             .authorizeHttpRequests(auth -> auth
-                // Only the login and forgot-password actions are public. Other paths stay protected.
+                // Login and password-reset request submission are public. The old
+                // email-only reset endpoint is permanently disabled because it let
+                // anyone overwrite a password.
                 .requestMatchers(HttpMethod.POST, "/login").permitAll()
-                .requestMatchers(HttpMethod.POST, "/forgot-password").permitAll()
+                .requestMatchers(HttpMethod.POST, "/forgot-password").denyAll()
 
-                // Every user management route, including PUT and DELETE /user/{id}, is ADMIN-only.
+                // Authenticated password change. Must stay reachable while a member
+                // still has a temporary password.
+                .requestMatchers(HttpMethod.POST, "/change-password").authenticated()
+
+                // Public: a member submits a password reset request. The response is
+                // always generic, so this reveals nothing about registered emails.
+                .requestMatchers(HttpMethod.POST, "/password-reset-requests").permitAll()
+
+                // ADMIN / LIBRARIAN: review password reset requests. MEMBER accounts
+                // can neither list nor process them.
+                .requestMatchers(HttpMethod.GET, "/password-reset-requests",
+                        "/password-reset-requests/pending")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_LIBRARIAN")
+                .requestMatchers(HttpMethod.POST, "/password-reset-requests/*/approve",
+                        "/password-reset-requests/*/reject")
+                        .hasAnyAuthority("ROLE_ADMIN", "ROLE_LIBRARIAN")
+
+                // Every other user management route, including PUT and DELETE /user/{id}, is ADMIN-only.
                 .requestMatchers("/user", "/users", "/user/**").hasAuthority("ROLE_ADMIN")
 
                 // ADMIN-only: view all profiles
@@ -118,7 +140,8 @@ public class SecurityConfig {
 
             .httpBasic(httpBasic -> httpBasic.disable())
 
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(passwordChangeRequiredFilter, JwtFilter.class);
 
         return http.build();
     }

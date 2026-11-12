@@ -36,6 +36,15 @@ public class UsersDAO {
 			return null;
 		}
 	}
+
+	/**
+	 * Locks a user row for the duration of the caller's transaction. Used to
+	 * serialise password reset request submission for the same member.
+	 */
+	public Users lockById(int id) {
+		Optional<Users> o = users.findByIdForUpdate(id);
+		return o.orElse(null);
+	}
 	public Users update(Users u) {
 		int id=u.getId();
 		Optional<Users> o = users.findById(id);
