@@ -1,0 +1,198 @@
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin: 0 0 22px;
+}
+
+.page-header h1 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 26px;
+}
+
+.form-container {
+    width: 100%;
+    max-width: 560px;
+    margin: 0 auto 40px;
+    padding: 28px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    box-sizing: border-box;
+}
+
+.form-container h1,
+.form-container h2 {
+    margin-top: 0;
+    text-align: center;
+    color: #2c3e50;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    color: #34495e;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-group .form-group-label {
+    display: block;
+    margin: 0 0 6px;
+    color: #34495e;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.form-container input[type="text"],
+.form-container input[type="number"],
+.form-container input[type="email"],
+.form-container input[type="password"],
+.form-container select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #ccd5df;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #2c3e50;
+    font-size: 15px;
+}
+
+.form-container input:focus,
+.form-container select:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.form-password-field {
+    position: relative;
+}
+
+.form-password-field input {
+    padding-right: 48px;
+}
+
+.form-password-field .form-toggle-password {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #5b6b7c;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.form-password-field .form-toggle-password:hover {
+    background: #eef3f8;
+}
+
+.form-hint {
+    margin: 0 0 16px;
+    color: #6b7c8f;
+    font-size: 13px;
+}
+
+.checkbox-list {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 10px 12px;
+    border: 1px solid #ccd5df;
+    border-radius: 6px;
+    background: #fbfcfd;
+}
+
+.checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 9px;
+    color: #34495e;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.checkbox-item:last-child {
+    margin-bottom: 0;
+}
+
+.checkbox-item input[type="checkbox"] {
+    width: 17px;
+    height: 17px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.form-actions button,
+.form-actions .form-cancel {
+    flex: 1;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.form-actions button {
+    background: #3498db;
+    color: #ffffff;
+}
+
+.form-actions button:hover:not(:disabled) {
+    background: #2980b9;
+}
+
+.form-actions button:disabled {
+    background: #8fbcd9;
+    cursor: not-allowed;
+}
+
+.form-actions .form-cancel {
+    background: #e9eef3;
+    color: #34495e;
+}
+
+.form-actions .form-cancel:hover {
+    background: #d8e1e9;
+    color: #2c3e50;
+}
+
+@media (max-width: 600px) {
+    .form-container {
+        padding: 20px 16px;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .page-header h1 {
+        font-size: 22px;
+    }
+}

@@ -1,0 +1,46 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Build output and installed dependencies
+**/target/
+**/build/
+**/dist/
+**/dist-ssr/
+**/node_modules/
+
+# Logs, temporary files, and JVM crash output
+*.log
+logs/
+hs_err_pid*.log
+replay_pid*.log
+*.hprof
+*.tmp
+*.temp
+
+# Local Maven configuration may contain credentials
+.mvn-local-settings.xml
+**/settings.xml
+**/settings-security.xml
+**/settings.local.xml
+
+# IDE and operating-system metadata
+.idea/
+.vscode/
+.settings/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.DS_Store
+Thumbs.db
+
+# Workspace-only metadata and redundant source archive
+.freebuff/
+.github/modernize/
+/library-frontend.zip
+
+# Temporary secrets
+.jwt-secret-temp.txt

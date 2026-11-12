@@ -1,0 +1,144 @@
+package com.pentagon.LibraryManagement.Service;
+
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+
+import com.pentagon.LibraryManagement.DAO.CategoryDAO;
+import com.pentagon.LibraryManagement.DataTransferObjectDTO.ResponseStructure;
+import com.pentagon.LibraryManagement.entity.Book;
+import com.pentagon.LibraryManagement.entity.Category;
+
+@Service
+public class CategoryService {
+	@Autowired
+	private CategoryDAO cry;
+
+	public ResponseEntity<ResponseStructure<Category>> addCategory(Category c){
+		Category category = cry.addCategory(c);
+
+		ResponseStructure<Category> response = new ResponseStructure<Category>();
+		response.setStatuscode(HttpStatus.CREATED.value());
+		response.setMessage("Category added...!");
+		response.setData(category);
+		return new ResponseEntity<ResponseStructure<Category>>(response,HttpStatus.CREATED);
+
+	}
+	public ResponseEntity<ResponseStructure<List<Category>>> getAll(){
+		List<Category> c = cry.getAllCategory();
+
+		ResponseStructure<List<Category>> response = new ResponseStructure<List<Category>>();
+		response.setStatuscode(HttpStatus.OK.value());
+		response.setMessage("Categories fetched...!");
+		response.setData(c);
+		return new ResponseEntity<ResponseStructure<List<Category>>>(response,HttpStatus.OK);
+
+	}
+
+	public ResponseEntity<ResponseStructure<List<Book>>> getBooks(int id) {
+
+	    List<Book> books = cry.getBooks(id);
+
+	    ResponseStructure<List<Book>> response = new ResponseStructure<>();
+
+	    if (books != null) {
+
+	        response.setStatuscode(HttpStatus.OK.value());
+	        response.setMessage("Categories Fetched Successfully");
+	        response.setData(books);
+
+	        return new ResponseEntity<>(response, HttpStatus.OK);
+
+	    } else {
+
+	        response.setStatuscode(HttpStatus.NOT_FOUND.value());
+	        response.setMessage("Category Not Found");
+	        response.setData(null);
+
+	        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+
+	    }
+
+	}
+	public ResponseEntity<ResponseStructure<Category>> findCategoryById(int c_id){
+		Category c= cry.getCategoryById(c_id);
+		if(c != null) {
+			ResponseStructure<Category> response = new ResponseStructure<Category>();
+			response.setStatuscode(HttpStatus.OK.value());
+			response.setMessage("Categories returned...!");
+			response.setData(c);
+			return new ResponseEntity<ResponseStructure<Category>>(response,HttpStatus.OK);
+		}else {
+			ResponseStructure<Category> response = new ResponseStructure<Category>();
+			response.setStatuscode(HttpStatus.NOT_FOUND.value());
+			response.setMessage("Category Not Found");
+			response.setData(null);
+			return new ResponseEntity<ResponseStructure<Category>>(response,HttpStatus.NOT_FOUND);
+		}
+	}
+	public ResponseEntity<ResponseStructure<List<Category>>> searchCategoryByName(String name) {
+
+	    List<Category> categories = cry.searchByName(name);
+
+	    ResponseStructure<List<Category>> response = new ResponseStructure<>();
+
+	    response.setStatuscode(HttpStatus.OK.value());
+	    response.setMessage("Categories Found");
+	    response.setData(categories);
+
+	    return new ResponseEntity<>(response, HttpStatus.OK);
+
+	}
+	public ResponseEntity<ResponseStructure<Category>> updateCategory( int id,Category category)  {
+
+	    Category updatedCategory = cry.updateCategory(id,category);
+
+	    ResponseStructure<Category> response = new ResponseStructure<>();
+
+	    if (updatedCategory != null) {
+
+	        response.setStatuscode(HttpStatus.OK.value());
+	        response.setMessage("Category Updated Successfully");
+	        response.setData(updatedCategory);
+
+	        return new ResponseEntity<>(response, HttpStatus.OK);
+
+	    } else {
+
+	        response.setStatuscode(HttpStatus.NOT_FOUND.value());
+	        response.setMessage("Category Not Found");
+	        response.setData(null);
+
+	        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+
+	    }
+	}
+
+	public ResponseEntity<ResponseStructure<Boolean>> deleteCategory(int c_id) {
+
+		   boolean category = cry.deleteCategory(c_id);
+
+		    ResponseStructure<Boolean> response = new ResponseStructure<>();
+
+		    if (category) {
+
+		        response.setStatuscode(HttpStatus.OK.value());
+		        response.setMessage("Category Deleted Successfully");
+		        response.setData(category);
+
+		        return new ResponseEntity<>(response, HttpStatus.OK);
+
+		    } else {
+
+		        response.setStatuscode(HttpStatus.NOT_FOUND.value());
+		        response.setMessage("Category Not Found");
+		        response.setData(null);
+
+		        return new ResponseEntity<>(response, HttpStatus.NOT_FOUND);
+
+		    }
+		}
+}

@@ -1,0 +1,2 @@
+$bytes = New-Object -TypeName 'System.Security.Cryptography.RNGCryptoServiceProvider'
+$bytes.GetBytes([byte[]]32) | % { [System.Convert]::ToBase64String($_) } | Out-File -FilePath .\.jwt-secret-temp.txt
