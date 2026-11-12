@@ -19,6 +19,9 @@ replay_pid*.log
 *.tmp
 *.temp
 
+# Captured test output
+**/test-output.txt
+
 # Local Maven configuration may contain credentials
 .mvn-local-settings.xml
 **/settings.xml

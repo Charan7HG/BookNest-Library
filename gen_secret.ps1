@@ -1,2 +1,4 @@
-$bytes = New-Object -TypeName 'System.Security.Cryptography.RNGCryptoServiceProvider'
-$bytes.GetBytes([byte[]]32) | % { [System.Convert]::ToBase64String($_) } | Out-File -FilePath .\.jwt-secret-temp.txt
+$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = New-Object byte[] 32
+$rng.GetBytes($bytes)
+[Convert]::ToBase64String($bytes) | Out-File -FilePath .\.jwt-secret-temp.txt -Encoding ascii

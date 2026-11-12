@@ -1,1 +1,2 @@
-powershell -c  $bytes = New-Object -TypeName 'System.Security.Cryptography.RNGCryptoServiceProvider'; $bytes.GetBytes(32) | % { [System.Convert]::ToBase64String($_) } > .jwt-secret-temp.txt
+@echo off
+powershell -NoProfile -Command "$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create(); $bytes = New-Object byte[] 32; $rng.GetBytes($bytes); [Convert]::ToBase64String($bytes)" > .jwt-secret-temp.txt
