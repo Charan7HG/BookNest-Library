@@ -21,7 +21,9 @@ axios.interceptors.response.use(
         const status = error.response?.status;
         const url = error.config?.url || "";
         const isAuthRequest =
-            url.endsWith("/login") || url.endsWith("/forgot-password");
+            url.endsWith("/login") ||
+            url.endsWith("/forgot-password") ||
+            url.endsWith("/password-reset-requests");
 
         if (status === 401 && !isAuthRequest) {
             clearAuth();

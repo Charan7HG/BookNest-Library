@@ -28,6 +28,38 @@ const Sidebar = () => {
     },
   ];
 
+  if (role === "MEMBER") {
+    links.push({
+      to: "/borrow-requests/my",
+      label: "My Borrow Requests",
+      icon: "📝",
+      sections: ["/borrow-requests/my"],
+    });
+  }
+
+  if (role === "ADMIN" || role === "LIBRARIAN") {
+    links.push({
+      to: "/borrow-requests",
+      label: "Borrow Requests",
+      icon: "📥",
+      sections: ["/borrow-requests"],
+    });
+
+    links.push({
+      to: "/loans/active",
+      label: "Active Loans",
+      icon: "📖",
+      sections: ["/loans/active"],
+    });
+
+    links.push({
+      to: "/password-reset-requests",
+      label: "Password Reset Requests",
+      icon: "🔑",
+      sections: ["/password-reset-requests"],
+    });
+  }
+
   if (role === "ADMIN") {
     links.push({
       to: "/users",

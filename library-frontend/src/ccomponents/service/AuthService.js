@@ -11,13 +11,6 @@ export const login = (email, password) => {
     });
 };
 
-export const forgotPassword = (email, newPassword) => {
-    return axios.post(`${BASE_URL}/forgot-password`, {
-        profile: { email },
-        password: newPassword
-    });
-};
-
 export const saveAuth = (token, user) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(user));

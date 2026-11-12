@@ -4,6 +4,10 @@ import Books from "./pages/Books";
 import Authors from "./pages/Authors";
 import Categories from "./pages/Categories";
 import Users from "./pages/Users";
+import MyBorrowRequests from "./pages/MyBorrowRequests";
+import BorrowRequests from "./pages/BorrowRequests";
+import PasswordResetRequests from "./pages/PasswordResetRequests";
+import ActiveLoans from "./pages/ActiveLoans";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import AddBook from "./pages/AddBook";
@@ -18,6 +22,7 @@ import ProtectedRoute from "./pages/ProtectedRoute";
 
 const CATALOG_MANAGERS = ["ADMIN", "LIBRARIAN"];
 const ADMIN_ONLY = ["ADMIN"];
+const MEMBER_ONLY = ["MEMBER"];
 
 const App = () => {
   return (
@@ -41,6 +46,42 @@ const App = () => {
         element={
           <ProtectedRoute>
             <Books />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/borrow-requests/my"
+        element={
+          <ProtectedRoute allowedRoles={MEMBER_ONLY}>
+            <MyBorrowRequests />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/borrow-requests"
+        element={
+          <ProtectedRoute allowedRoles={CATALOG_MANAGERS}>
+            <BorrowRequests />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/password-reset-requests"
+        element={
+          <ProtectedRoute allowedRoles={CATALOG_MANAGERS}>
+            <PasswordResetRequests />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/loans/active"
+        element={
+          <ProtectedRoute allowedRoles={CATALOG_MANAGERS}>
+            <ActiveLoans />
           </ProtectedRoute>
         }
       />

@@ -208,6 +208,119 @@
     background: #636e72;
 }
 
+/* Borrowing workflow */
+.borrow-hint {
+    margin: -8px 0 20px;
+    padding: 12px 15px;
+    border-left: 4px solid #3498db;
+    border-radius: 6px;
+    background: #eaf4fb;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.availability-note {
+    display: block;
+    margin-top: 4px;
+    color: #6b7c8f;
+    font-size: 12px;
+}
+
+.detail-note {
+    display: block;
+    margin-top: 3px;
+    color: #6b7c8f;
+    font-size: 12px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #8a6d3b;
+}
+
+.status-approved,
+.status-active {
+    background: #d4edda;
+    color: #1e6b34;
+}
+
+.status-rejected {
+    background: #f8d7da;
+    color: #8b1f2a;
+}
+
+.status-returned {
+    background: #e2e3e5;
+    color: #41464b;
+}
+
+.action-buttons .request-btn {
+    background: #27ae60;
+}
+
+.action-buttons .request-btn:hover {
+    background: #219150;
+}
+
+.action-buttons button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.page-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.page-actions button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    background: #7f8c8d;
+    color: #ffffff;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+.page-actions button:hover {
+    background: #636e72;
+}
+
+.page-actions button.active-filter,
+.page-actions button.active-filter:hover {
+    background: #2c3e50;
+}
+
+.temp-password-value {
+    display: block;
+    margin: 0 0 14px;
+    padding: 12px 16px;
+    border: 1px dashed #b0bec5;
+    border-radius: 8px;
+    background: #f5f7fa;
+    color: #2c3e50;
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 20px;
+    letter-spacing: 0.06em;
+    word-break: break-all;
+}
+
+.temp-password-warning {
+    color: #b26a00;
+    font-size: 14px;
+}
+
 @media (max-width: 768px) {
     .book-table {
         min-width: 680px;
