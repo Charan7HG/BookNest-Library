@@ -12,8 +12,8 @@ import {
 } from "../ccomponents/service/BorrowingService";
 import { getErrorMessage } from "../ccomponents/borrowUtils";
 import { hasAnyRole } from "../ccomponents/service/AuthService";
-import "./Books.css";
 import { useNavigate } from "react-router-dom";
+import "./Books.css";
 
 import Spinner from "../ccomponents/Spinner";
 import { toast } from "react-toastify";
@@ -238,8 +238,9 @@ const Books = () => {
               <th>Name</th>
               <th>Price</th>
               <th>Author</th>
-              <th>User</th>
-              <th>Categories</th>
+              <th>Total Copies</th>
+              <th>Available Copies</th>
+              <th>On Loan</th>
               {showActions && <th>Actions</th>}
             </tr>
           </thead>
@@ -247,72 +248,72 @@ const Books = () => {
           <tbody>
             {books.length === 0 ? (
               <tr>
-                <td colSpan={showActions ? 7 : 6}>No Books Found</td>
+                <td colSpan={showActions ? 8 : 7}>No Books Found</td>
               </tr>
             ) : (
-              books.map((book) => (
-                <tr key={book.id}>
-                  <td>{book.id}</td>
-                  <td>
-                    {book.name}
-                    {isMember && (
-                      <span className="availability-note">
-                        Availability checked at approval
-                      </span>
-                    )}
-                  </td>
-                  <td className="nowrap">{book.price}</td>
-                  <td>{book.author?.name}</td>
-                  <td>{book.users?.name || "Not Assigned"}</td>
-                  <td>
-                    <div className="category-list">
-                      {book.category?.length > 0
-                        ? book.category.map((category) => category.name).join(", ")
-                        : "No Category"}
-                    </div>
-                  </td>
+              books.map((book) => {
+                const total = book.totalCopies ?? 0;
+                const available = book.availableCopies ?? 0;
+                const onLoan = book.onLoanCopies ?? 0;
 
-                  {showActions && (
-                    <td className="nowrap">
-                      {canManage ? (
-                        <div className="action-buttons">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/edit-book/${book.id}`)}
-                          >
-                            Edit
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(book.id)}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="action-buttons">
-                          <button
-                            type="button"
-                            className="request-btn"
-                            onClick={() => handleBorrowRequest(book)}
-                            disabled={
-                              pendingBookIds.has(book.id) ||
-                              requestingBookId !== null
-                            }
-                          >
-                            {pendingBookIds.has(book.id)
-                              ? "Request Pending"
-                              : requestingBookId === book.id
-                                ? "Requesting..."
-                                : "Request to Borrow"}
-                          </button>
-                        </div>
+                return (
+                  <tr key={book.id}>
+                    <td>{book.id}</td>
+                    <td>
+                      {book.name}
+                      {isMember && (
+                        <span className="availability-note">
+                          Availability checked at approval
+                        </span>
                       )}
                     </td>
-                  )}
-                </tr>
-              ))
+                    <td className="nowrap">{book.price}</td>
+                    <td>{book.author?.name}</td>
+                    <td>{total}</td>
+                    <td>{available}</td>
+                    <td>{onLoan}</td>
+                    {showActions && (
+                      <td className="nowrap">
+                        {canManage ? (
+                          <div className="action-buttons">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/edit-book/${book.id}`)}
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(book.id)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="action-buttons">
+                            <button
+                              type="button"
+                              className="request-btn"
+                              onClick={() => handleBorrowRequest(book)}
+                              disabled={
+                                pendingBookIds.has(book.id) ||
+                                requestingBookId !== null
+                              }
+                            >
+                              {pendingBookIds.has(book.id)
+                                ? "Request Pending"
+                                : requestingBookId === book.id
+                                  ? "Requesting..."
+                                  : "Request to Borrow"}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

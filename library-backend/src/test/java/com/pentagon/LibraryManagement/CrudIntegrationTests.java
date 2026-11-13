@@ -15,8 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.List;
 import java.util.UUID;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.jayway.jsonpath.JsonPath;
 import com.pentagon.LibraryManagement.Repository.AuthorRepository;
 import com.pentagon.LibraryManagement.Repository.BookRepository;
 import com.pentagon.LibraryManagement.Repository.CategoryRepository;
@@ -459,6 +458,35 @@ class CrudIntegrationTests {
 	}
 
 	@Test
+	void authorAndCategoryCreationRejectsDuplicatesCaseInsensitively() throws Exception {
+		createAuthor(admin, "Duplicate Author");
+		createCategory(admin, "Duplicate Category");
+
+		mockMvc.perform(post("/author").header("Authorization", bearer(librarian))
+				.contentType(MediaType.APPLICATION_JSON).content(authorJson("duplicate author")))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.message").value("An author with this name already exists"));
+		mockMvc.perform(post("/author").header("Authorization", bearer(librarian))
+				.contentType(MediaType.APPLICATION_JSON).content(authorJson("   ")))
+			.andExpect(status().isBadRequest());
+
+		mockMvc.perform(post("/category").header("Authorization", bearer(librarian))
+				.contentType(MediaType.APPLICATION_JSON).content(categoryJson("DUPLICATE CATEGORY")))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.message").value("A category with this name already exists"));
+		mockMvc.perform(post("/category").header("Authorization", bearer(librarian))
+				.contentType(MediaType.APPLICATION_JSON).content(categoryJson("")))
+			.andExpect(status().isBadRequest());
+
+		assertEquals(1, authorRepository.findAll().stream()
+				.filter(author -> "Duplicate Author".equalsIgnoreCase(author.getName()))
+				.count());
+		assertEquals(1, categoryRepository.findAll().stream()
+				.filter(category -> "Duplicate Category".equalsIgnoreCase(category.getName()))
+				.count());
+	}
+
+	@Test
 	void dashboardCountsRecentBooksAndEmptyCatalogAreCorrectForEachRole() throws Exception {
 		mockMvc.perform(get("/dashboard")).andExpect(status().isUnauthorized());
 		for (Users roleUser : List.of(admin, librarian, member)) {
@@ -500,8 +528,17 @@ class CrudIntegrationTests {
 	}
 
 	private int createBook(Users user, String name) throws Exception {
+		Author author = new Author();
+		author.setName("Author for " + name + " " + UUID.randomUUID());
+		author = authorRepository.saveAndFlush(author);
+
+		Category category = new Category();
+		category.setName("Category for " + name + " " + UUID.randomUUID());
+		category = categoryRepository.saveAndFlush(category);
+
 		MvcResult result = mockMvc.perform(post("/book").header("Authorization", bearer(user))
-				.contentType(MediaType.APPLICATION_JSON).content(bookJson(name)))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(bookCreateJson(name, author.getId(), category.getId(), 1)))
 			.andExpect(status().isCreated()).andReturn();
 		return idFromResponse(result.getResponse().getContentAsString());
 	}
@@ -521,11 +558,11 @@ class CrudIntegrationTests {
 	}
 
 	private int idFromResponse(String responseBody) {
-		int dataIndex = responseBody.indexOf("\"data\"");
-		assertTrue(dataIndex >= 0, "Response did not contain data: " + responseBody);
-		Matcher matcher = Pattern.compile("\"id\"\\s*:\\s*(\\d+)").matcher(responseBody.substring(dataIndex));
-		assertTrue(matcher.find(), "Response did not contain data.id: " + responseBody);
-		return Integer.parseInt(matcher.group(1));
+		// Read the top-level data.id directly. Book responses now contain nested
+		// objects (author, category) whose ids must not be mistaken for the book id.
+		Integer id = JsonPath.read(responseBody, "$.data.id");
+		assertNotNull(id, "Response did not contain data.id: " + responseBody);
+		return id;
 	}
 
 	private String userJson(String name, String email, long phone, String password, Role role) {
@@ -537,6 +574,12 @@ class CrudIntegrationTests {
 
 	private String bookJson(String name) {
 		return "{\"name\":\"" + name + "\",\"price\":19.95}";
+	}
+
+	private String bookCreateJson(String name, int authorId, int categoryId, int copies) {
+		return "{\"name\":\"" + name + "\",\"description\":\"Test book\",\"price\":19.95,"
+				+ "\"publishedYear\":2024,\"language\":\"English\",\"authorId\":" + authorId
+				+ ",\"categoryId\":" + categoryId + ",\"numberOfCopies\":" + copies + "}";
 	}
 
 	private String authorJson(String name) {

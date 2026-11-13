@@ -44,6 +44,35 @@ export const hasAnyRole = (...roles) => {
     return Boolean(user?.role) && roles.includes(user.role);
 };
 
+// Authenticated self-service password change. The backend identifies the user
+// from the JWT, so no user id is ever sent from the browser.
+export const changePassword = (currentPassword, newPassword) => {
+    return axios.post(`${BASE_URL}/change-password`, {
+        currentPassword,
+        newPassword
+    });
+};
+
+// The forced-change flag is stored with the session so the router can keep a
+// temporary-password user on the Change Password page. It is cleared only
+// after the backend confirms the password was changed.
+export const isPasswordChangeRequired = () => {
+    return getStoredUser()?.passwordChangeRequired === true;
+};
+
+export const clearPasswordChangeRequired = () => {
+    const user = getStoredUser();
+
+    if (!user) {
+        return;
+    }
+
+    localStorage.setItem("user", JSON.stringify({
+        ...user,
+        passwordChangeRequired: false
+    }));
+};
+
 const isTokenExpired = (token) => {
     try {
         const payload = token.split(".")[1];

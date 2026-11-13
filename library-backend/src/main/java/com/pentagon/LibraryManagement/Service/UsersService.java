@@ -27,6 +27,7 @@ public class UsersService {
 	private static final char[] TEMP_PASSWORD_ALPHABET =
 			"ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*".toCharArray();
 	private static final int TEMP_PASSWORD_LENGTH = 16;
+	private static final int MIN_PASSWORD_LENGTH = 8;
 
 	@Autowired
 	private UsersDAO ur;
@@ -204,6 +205,11 @@ public class UsersService {
 					"Current password and new password are required");
 		}
 
+		if (request.getNewPassword().length() < MIN_PASSWORD_LENGTH) {
+			return passwordChangeError(HttpStatus.BAD_REQUEST,
+					"New password must be at least " + MIN_PASSWORD_LENGTH + " characters");
+		}
+
 		Users user = ur.findByEmail(email);
 		if (user == null) {
 			return passwordChangeError(HttpStatus.NOT_FOUND, "User not found");
@@ -211,6 +217,10 @@ public class UsersService {
 		if (user.getPassword() == null
 				|| !passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
 			return passwordChangeError(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+		}
+		if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+			return passwordChangeError(HttpStatus.BAD_REQUEST,
+					"New password must be different from the current password");
 		}
 
 		user.setPassword(passwordEncoder.encode(request.getNewPassword()));
@@ -239,4 +249,4 @@ public class UsersService {
 		response.setData(null);
 		return new ResponseEntity<>(response, status);
 	}
-}
+}

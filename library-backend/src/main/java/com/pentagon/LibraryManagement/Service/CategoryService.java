@@ -18,14 +18,18 @@ public class CategoryService {
 	private CategoryDAO cry;
 
 	public ResponseEntity<ResponseStructure<Category>> addCategory(Category c){
+		if (c == null || c.getName() == null || c.getName().isBlank()) {
+			return categoryResponse(HttpStatus.BAD_REQUEST, "Category name is required", null);
+		}
+
+		String name = c.getName().trim();
+		if (cry.findByNameIgnoreCase(name).isPresent()) {
+			return categoryResponse(HttpStatus.CONFLICT, "A category with this name already exists", null);
+		}
+
+		c.setName(name);
 		Category category = cry.addCategory(c);
-
-		ResponseStructure<Category> response = new ResponseStructure<Category>();
-		response.setStatuscode(HttpStatus.CREATED.value());
-		response.setMessage("Category added...!");
-		response.setData(category);
-		return new ResponseEntity<ResponseStructure<Category>>(response,HttpStatus.CREATED);
-
+		return categoryResponse(HttpStatus.CREATED, "Category added...!", category);
 	}
 	public ResponseEntity<ResponseStructure<List<Category>>> getAll(){
 		List<Category> c = cry.getAllCategory();
@@ -94,6 +98,17 @@ public class CategoryService {
 	}
 	public ResponseEntity<ResponseStructure<Category>> updateCategory( int id,Category category)  {
 
+	    if (category == null || category.getName() == null || category.getName().isBlank()) {
+	        return categoryResponse(HttpStatus.BAD_REQUEST, "Category name is required", null);
+	    }
+
+	    String name = category.getName().trim();
+	    Category duplicate = cry.findByNameIgnoreCase(name).orElse(null);
+	    if (duplicate != null && duplicate.getId() != id) {
+	        return categoryResponse(HttpStatus.CONFLICT, "A category with this name already exists", null);
+	    }
+	    category.setName(name);
+
 	    Category updatedCategory = cry.updateCategory(id,category);
 
 	    ResponseStructure<Category> response = new ResponseStructure<>();
@@ -141,4 +156,13 @@ public class CategoryService {
 
 		    }
 		}
+
+	private ResponseEntity<ResponseStructure<Category>> categoryResponse(
+			HttpStatus status, String message, Category category) {
+		ResponseStructure<Category> response = new ResponseStructure<Category>();
+		response.setStatuscode(status.value());
+		response.setMessage(message);
+		response.setData(category);
+		return new ResponseEntity<ResponseStructure<Category>>(response, status);
+	}
 }

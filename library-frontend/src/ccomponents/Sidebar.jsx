@@ -60,6 +60,14 @@ const Sidebar = () => {
     });
   }
 
+  // Change Password is available to all roles
+  links.push({
+    to: "/change-password",
+    label: "Change Password",
+    icon: "🔐",
+    sections: ["/change-password"],
+  });
+
   if (role === "ADMIN") {
     links.push({
       to: "/users",

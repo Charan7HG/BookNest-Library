@@ -129,7 +129,7 @@ class PasswordResetRequestIntegrationTests {
 	}
 
 	@Test
-	void nonMemberEmailsNeverCreateRequests() throws Exception {
+	void adminEmailsNeverCreateRequestsButLibrarianEmailsDo() throws Exception {
 		mockMvc.perform(post("/password-reset-requests")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(emailJson(admin.getProfile().getEmail())))
@@ -141,8 +141,9 @@ class PasswordResetRequestIntegrationTests {
 				.content(emailJson(librarian.getProfile().getEmail())))
 			.andExpect(status().isOk());
 
+		// ADMIN must use the authenticated Change Password page instead.
 		assertEquals(0, pendingRequestsFor(admin.getId()));
-		assertEquals(0, pendingRequestsFor(librarian.getId()));
+		assertEquals(1, pendingRequestsFor(librarian.getId()));
 	}
 
 	@Test

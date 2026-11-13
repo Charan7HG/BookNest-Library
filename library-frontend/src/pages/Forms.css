@@ -55,7 +55,9 @@
 .form-container input[type="number"],
 .form-container input[type="email"],
 .form-container input[type="password"],
-.form-container select {
+.form-container select,
+.form-container textarea,
+.dialog-form input[type="text"] {
     width: 100%;
     box-sizing: border-box;
     padding: 10px 12px;
@@ -64,13 +66,70 @@
     background: #ffffff;
     color: #2c3e50;
     font-size: 15px;
+    font-family: inherit;
+}
+
+.form-container textarea {
+    resize: vertical;
+    min-height: 80px;
 }
 
 .form-container input:focus,
-.form-container select:focus {
+.form-container select:focus,
+.form-container textarea:focus,
+.dialog-form input:focus {
     border-color: #3498db;
     outline: none;
     box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
+}
+
+.form-error {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border: 1px solid #f5c2c0;
+    border-radius: 7px;
+    background: #fdecea;
+    color: #b42318;
+    font-size: 14px;
+}
+
+.select-with-action {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.select-with-action select {
+    flex: 1;
+    min-width: 0;
+}
+
+.form-link-button {
+    flex-shrink: 0;
+    padding: 9px 12px;
+    border: 1px solid #3498db;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #2471a3;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.form-link-button:hover {
+    background: #eaf4fb;
+}
+
+.dialog-form .form-group {
+    margin-bottom: 20px;
+}
+
+.confirm-actions .confirm-create {
+    background: #3498db;
+}
+
+.confirm-actions .confirm-create:hover:not(:disabled) {
+    background: #2980b9;
 }
 
 .form-password-field {

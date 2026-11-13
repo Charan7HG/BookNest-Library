@@ -5,6 +5,7 @@ import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -18,6 +19,12 @@ public interface BookCopyRepository extends JpaRepository<BookCopy, Integer> {
     boolean existsByBook_IdAndStatus(int bookId, BookCopyStatus status);
 
     long countByBook_IdAndStatus(int bookId, BookCopyStatus status);
+
+    long countByBook_Id(int bookId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("delete from BookCopy c where c.book.id = :bookId")
+    void deleteByBookId(@Param("bookId") int bookId);
 
     /**
      * Locks AVAILABLE copies of a book with SELECT ... FOR UPDATE and returns them

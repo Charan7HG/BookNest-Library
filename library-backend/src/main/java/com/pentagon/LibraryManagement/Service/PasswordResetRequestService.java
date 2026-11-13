@@ -23,17 +23,21 @@ import com.pentagon.LibraryManagement.entity.Users;
 import com.pentagon.LibraryManagement.exception.BorrowingException;
 
 /**
- * Member-submitted password reset requests.
+ * Staff-assisted password reset requests.
  *
- * Members never receive a password directly. Staff approve a pending request
- * and the approval generates the one-time temporary password.
+ * MEMBER and LIBRARIAN accounts may submit a request. ADMIN accounts never use
+ * this queue and change their own password while authenticated instead.
+ *
+ * Members and librarians never receive a password directly. An authorised
+ * staff member approves a pending request and the approval generates the
+ * one-time temporary password.
  */
 @Service
 public class PasswordResetRequestService {
 
     public static final String GENERIC_SUBMISSION_MESSAGE =
             "If an eligible account exists, your password reset request has been submitted. "
-                    + "Please contact your Librarian if you need assistance.";
+                    + "Please contact library staff if you need assistance.";
 
     @Autowired
     private PasswordResetRequestDAO requestDAO;
@@ -49,11 +53,14 @@ public class PasswordResetRequestService {
 
     /**
      * Public submission. The response is always the same generic message so an
-     * anonymous caller cannot discover which emails belong to members.
+     * anonymous caller cannot discover which emails belong to eligible accounts.
      *
-     * The member row is locked while checking for an existing pending request,
+     * The account row is locked while checking for an existing pending request,
      * so two simultaneous submissions cannot create duplicates. The partial
      * unique index in V5 is the final database-level guarantee.
+     *
+     * ADMIN accounts are deliberately excluded: they must use the
+     * authenticated self-service Change Password page.
      */
     @Transactional
     public void submitRequest(String email) {
@@ -62,12 +69,12 @@ public class PasswordResetRequestService {
         }
 
         Users user = usersDAO.findByEmail(email.trim());
-        if (user == null || user.getRole() != Role.MEMBER) {
+        if (user == null || !canSubmitRequest(user.getRole())) {
             return;
         }
 
         Users locked = usersDAO.lockById(user.getId());
-        if (locked == null || locked.getRole() != Role.MEMBER) {
+        if (locked == null || !canSubmitRequest(locked.getRole())) {
             return;
         }
 
@@ -80,16 +87,18 @@ public class PasswordResetRequestService {
 
     @Transactional(readOnly = true)
     public List<PasswordResetRequestResponse> getPendingRequests() {
-        requireStaff();
+        Users reviewer = requireStaff();
         return requestDAO.findPending().stream()
+                .filter(request -> canView(reviewer, request))
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public List<PasswordResetRequestResponse> getAllRequests() {
-        requireStaff();
+        Users reviewer = requireStaff();
         return requestDAO.findAll().stream()
+                .filter(request -> canView(reviewer, request))
                 .map(this::toResponse)
                 .toList();
     }
@@ -111,13 +120,10 @@ public class PasswordResetRequestService {
                     "Only pending password reset requests can be processed");
         }
 
-        Users member = request.getUser();
-        if (member == null || member.getRole() != Role.MEMBER) {
-            throw new BorrowingException(HttpStatus.CONFLICT,
-                    "The requesting account is not a MEMBER");
-        }
+        Users target = request.getUser();
+        requireCanProcess(reviewer, target);
 
-        String temporaryPassword = usersService.applyTemporaryPassword(member);
+        String temporaryPassword = usersService.applyTemporaryPassword(target);
 
         request.setStatus(PasswordResetRequestStatus.APPROVED);
         request.setReviewedBy(reviewer);
@@ -126,8 +132,8 @@ public class PasswordResetRequestService {
 
         PasswordResetResponse response = new PasswordResetResponse();
         response.setRequestId(request.getId());
-        response.setUserId(member.getId());
-        response.setEmail(member.getProfile() != null ? member.getProfile().getEmail() : null);
+        response.setUserId(target.getId());
+        response.setEmail(target.getProfile() != null ? target.getProfile().getEmail() : null);
         response.setTemporaryPassword(temporaryPassword);
         response.setPasswordChangeRequired(true);
         return response;
@@ -148,6 +154,8 @@ public class PasswordResetRequestService {
             throw new BorrowingException(HttpStatus.CONFLICT,
                     "Only pending password reset requests can be processed");
         }
+
+        requireCanProcess(reviewer, request.getUser());
 
         request.setStatus(PasswordResetRequestStatus.REJECTED);
         request.setReviewedBy(reviewer);
@@ -179,6 +187,58 @@ public class PasswordResetRequestService {
         return user;
     }
 
+    private boolean canSubmitRequest(Role role) {
+        return role == Role.MEMBER || role == Role.LIBRARIAN;
+    }
+
+    /**
+     * ADMIN sees the whole queue. A LIBRARIAN only sees MEMBER requests, so a
+     * librarian request can never be approved or rejected by another librarian.
+     */
+    private boolean canView(Users reviewer, PasswordResetRequest request) {
+        Users target = request.getUser();
+        if (target == null) {
+            return false;
+        }
+        if (reviewer.getRole() == Role.ADMIN) {
+            return true;
+        }
+        return reviewer.getRole() == Role.LIBRARIAN && target.getRole() == Role.MEMBER;
+    }
+
+    /**
+     * Applies the approval matrix and blocks self-service through the queue.
+     *
+     * MEMBER requests  -> ADMIN or LIBRARIAN
+     * LIBRARIAN request -> ADMIN only
+     * ADMIN request     -> never exists in this queue
+     */
+    private void requireCanProcess(Users reviewer, Users target) {
+        if (target == null) {
+            throw new BorrowingException(HttpStatus.CONFLICT,
+                    "The password reset request has no account");
+        }
+
+        if (reviewer.getId() == target.getId()) {
+            throw new BorrowingException(HttpStatus.FORBIDDEN,
+                    "Staff cannot reset their own password through the request queue");
+        }
+
+        boolean allowed;
+        if (reviewer.getRole() == Role.ADMIN) {
+            allowed = target.getRole() == Role.MEMBER || target.getRole() == Role.LIBRARIAN;
+        } else if (reviewer.getRole() == Role.LIBRARIAN) {
+            allowed = target.getRole() == Role.MEMBER;
+        } else {
+            allowed = false;
+        }
+
+        if (!allowed) {
+            throw new BorrowingException(HttpStatus.FORBIDDEN,
+                    "You are not allowed to process this password reset request");
+        }
+    }
+
     private Instant now() {
         return Instant.now(clock);
     }
@@ -193,6 +253,7 @@ public class PasswordResetRequestService {
         if (member != null) {
             response.setMemberId(member.getId());
             response.setMemberName(member.getName());
+            response.setAccountRole(member.getRole() != null ? member.getRole().name() : null);
             if (member.getProfile() != null) {
                 response.setMemberEmail(member.getProfile().getEmail());
             }

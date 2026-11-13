@@ -10,6 +10,7 @@ import PasswordResetRequests from "./pages/PasswordResetRequests";
 import ActiveLoans from "./pages/ActiveLoans";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
+import ChangePassword from "./pages/ChangePassword";
 import AddBook from "./pages/AddBook";
 import EditBook from "./pages/EditBook";
 import AddUser from "./pages/AddUser";
@@ -29,6 +30,17 @@ const App = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      {/* Shared by ADMIN, LIBRARIAN and MEMBER. Temporary-password users are
+          allowed to stay on this page while every other page redirects here. */}
+      <Route
+        path="/change-password"
+        element={
+          <ProtectedRoute>
+            <ChangePassword />
+          </ProtectedRoute>
+        }
+      />
 
       <Route
         path="/"

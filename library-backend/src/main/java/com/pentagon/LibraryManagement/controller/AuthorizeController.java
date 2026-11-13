@@ -42,12 +42,14 @@ public class AuthorizeController {
             loginResponse.setName(user.getName());
             loginResponse.setEmail(user.getProfile().getEmail());
             loginResponse.setRole(user.getRole().name());
+            loginResponse.setPasswordChangeRequired(user.isPasswordChangeRequired());
 
             LoginResponse.User safeUser = new LoginResponse.User();
             safeUser.setId(user.getId());
             safeUser.setName(user.getName());
             safeUser.setEmail(user.getProfile().getEmail());
             safeUser.setRole(user.getRole().name());
+            safeUser.setPasswordChangeRequired(user.isPasswordChangeRequired());
             loginResponse.setUser(safeUser);
 
             ResponseStructure<LoginResponse> responser=  new ResponseStructure<>();

@@ -24,6 +24,10 @@ public class LoanDAO {
         return loanRepository.existsByMember_IdAndCopy_Book_IdAndStatus(memberId, bookId, LoanStatus.ACTIVE);
     }
 
+    public boolean existsAnyForBook(int bookId) {
+        return loanRepository.existsByCopy_Book_Id(bookId);
+    }
+
     public List<Loan> findActiveLoans() {
         return loanRepository.findByStatusOrderByIdAsc(LoanStatus.ACTIVE);
     }

@@ -21,6 +21,8 @@ public interface LoanRepository extends JpaRepository<Loan, Integer> {
 
     List<Loan> findByStatusOrderByIdAsc(LoanStatus status);
 
+    boolean existsByCopy_Book_Id(int bookId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select l from Loan l where l.id = :id")
     Optional<Loan> findByIdForUpdate(@Param("id") int id);

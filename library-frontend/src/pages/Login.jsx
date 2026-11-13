@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { isAuthenticated, login, saveAuth } from "../ccomponents/service/AuthService";
+import { isAuthenticated, isPasswordChangeRequired, login, saveAuth } from "../ccomponents/service/AuthService";
 import "./Login.css";
 
 const Login = () => {
@@ -18,7 +18,9 @@ const Login = () => {
         requestedPath && requestedPath !== "/login" ? requestedPath : "/";
 
     if (isAuthenticated()) {
-        return <Navigate to={redirectTo} replace />;
+        // A temporary-password user is allowed to sign in but goes straight to
+        // the Change Password page, matching the backend filter.
+        return <Navigate to={isPasswordChangeRequired() ? "/change-password" : redirectTo} replace />;
     }
 
     const handleLogin = async (event) => {
@@ -42,6 +44,17 @@ const Login = () => {
             }
 
             saveAuth(data.token, data.user);
+
+            const mustChangePassword =
+                data.passwordChangeRequired === true ||
+                data.user.passwordChangeRequired === true;
+
+            if (mustChangePassword) {
+                toast.info("Please change your temporary password before continuing.");
+                navigate("/change-password", { replace: true });
+                return;
+            }
+
             toast.success("Login Successful");
             navigate(redirectTo, { replace: true });
         } catch (loginError) {

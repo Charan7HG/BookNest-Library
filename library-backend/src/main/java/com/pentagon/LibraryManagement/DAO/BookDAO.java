@@ -55,6 +55,19 @@ public class BookDAO {
 			existingBook.setName(updatedBook.getName());
 			existingBook.setPrice(updatedBook.getPrice());
 			existingBook.setAuthor(updatedBook.getAuthor());
+
+			// Only replace optional metadata when the caller actually supplied it,
+			// so a partial update cannot silently erase existing values.
+			if (updatedBook.getDescription() != null) {
+				existingBook.setDescription(updatedBook.getDescription());
+			}
+			if (updatedBook.getPublishedYear() != null) {
+				existingBook.setPublishedYear(updatedBook.getPublishedYear());
+			}
+			if (updatedBook.getLanguage() != null) {
+				existingBook.setLanguage(updatedBook.getLanguage());
+			}
+
 			// book.user_id is legacy data and must not be rewritten through the catalog API.
 			existingBook.setCategory(updatedBook.getCategory());
 

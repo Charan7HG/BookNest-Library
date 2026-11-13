@@ -23,6 +23,10 @@ public class CategoryDAO {
 		return category.save(c);
 	}
 
+	public Optional<Category> findByNameIgnoreCase(String name) {
+		return category.findFirstByNameIgnoreCase(name);
+	}
+
 	public List<Category>getAllCategory(){
 		return category.findAll();
 	}

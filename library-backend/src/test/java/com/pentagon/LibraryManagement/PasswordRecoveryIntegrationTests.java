@@ -159,18 +159,110 @@ class PasswordRecoveryIntegrationTests {
 	}
 
 	@Test
-	void staffAccountsCannotBeTargetedByResetRequests() throws Exception {
+	void adminAccountsCannotBeTargetedButLibrariansCanSubmitRequests() throws Exception {
 		mockMvc.perform(post("/password-reset-requests")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(emailJson(admin.getProfile().getEmail())))
-			.andExpect(status().isOk());
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.message")
+					.value(org.hamcrest.Matchers.containsString("If an eligible account exists")));
 		mockMvc.perform(post("/password-reset-requests")
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(emailJson(librarian.getProfile().getEmail())))
 			.andExpect(status().isOk());
 
 		assertEquals(0, pendingRequestsFor(admin.getId()));
-		assertEquals(0, pendingRequestsFor(librarian.getId()));
+		assertEquals(1, pendingRequestsFor(librarian.getId()));
+	}
+
+	@Test
+	void onlyAdminCanApproveLibrarianRequestsAndLibrarianCannotSelfApprove() throws Exception {
+		PasswordResetRequest request = submitRequestFor(librarian);
+
+		// A librarian cannot process even their own request, and the librarian
+		// queue view deliberately hides librarian requests.
+		mockMvc.perform(get("/password-reset-requests/pending")
+				.header("Authorization", bearer(librarian)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data[*].accountRole")
+					.value(org.hamcrest.Matchers.not(org.hamcrest.Matchers.hasItem("LIBRARIAN"))));
+		mockMvc.perform(post("/password-reset-requests/{id}/approve", request.getId())
+				.header("Authorization", bearer(librarian)))
+			.andExpect(status().isForbidden());
+		mockMvc.perform(post("/password-reset-requests/{id}/reject", request.getId())
+				.header("Authorization", bearer(librarian)))
+			.andExpect(status().isForbidden());
+
+		assertEquals(PasswordResetRequestStatus.PENDING,
+				requestRepository.findById(request.getId()).orElseThrow().getStatus());
+
+		// ADMIN sees and approves it.
+		mockMvc.perform(get("/password-reset-requests/pending")
+				.header("Authorization", bearer(admin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data[*].accountRole")
+					.value(org.hamcrest.Matchers.hasItem("LIBRARIAN")));
+
+		mockMvc.perform(post("/password-reset-requests/{id}/approve", request.getId())
+				.header("Authorization", bearer(admin)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.temporaryPassword").isNotEmpty())
+			.andExpect(jsonPath("$.data.passwordChangeRequired").value(true));
+	}
+
+	@Test
+	void librarianForcedPasswordChangeWorksAndTheOldPasswordStopsWorking() throws Exception {
+		PasswordResetRequest request = submitRequestFor(librarian);
+
+		MvcResult approval = mockMvc.perform(post("/password-reset-requests/{id}/approve", request.getId())
+				.header("Authorization", bearer(admin)))
+			.andExpect(status().isOk())
+			.andReturn();
+		String temporaryPassword = JsonPath.read(approval.getResponse().getContentAsString(),
+				"$.data.temporaryPassword");
+
+		MvcResult loginResult = mockMvc.perform(post("/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(loginJson(librarian.getProfile().getEmail(), temporaryPassword)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.passwordChangeRequired").value(true))
+			.andExpect(jsonPath("$.data.user.passwordChangeRequired").value(true))
+			.andReturn();
+		String token = JsonPath.read(loginResult.getResponse().getContentAsString(), "$.data.token");
+
+		mockMvc.perform(get("/books").header("Authorization", "Bearer " + token))
+			.andExpect(status().isForbidden())
+			.andExpect(jsonPath("$.message").value("Password change required before using other endpoints"));
+
+		mockMvc.perform(post("/change-password")
+				.header("Authorization", "Bearer " + token)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(changePasswordJson(temporaryPassword, "LibrarianNewPass!42")))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(post("/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(loginJson(librarian.getProfile().getEmail(), temporaryPassword)))
+			.andExpect(status().isUnauthorized());
+		assertNotNull(login(librarian.getProfile().getEmail(), "LibrarianNewPass!42"));
+	}
+
+	@Test
+	void adminCanChangeOwnPasswordWhileAuthenticated() throws Exception {
+		String token = login(admin.getProfile().getEmail(), ORIGINAL_PASSWORD);
+
+		mockMvc.perform(post("/change-password")
+				.header("Authorization", "Bearer " + token)
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(changePasswordJson(ORIGINAL_PASSWORD, "AdminNewPass!42")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.message").value("Password changed successfully"));
+
+		mockMvc.perform(post("/login")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(loginJson(admin.getProfile().getEmail(), ORIGINAL_PASSWORD)))
+			.andExpect(status().isUnauthorized());
+		assertNotNull(login(admin.getProfile().getEmail(), "AdminNewPass!42"));
 	}
 
 	@Test
@@ -348,11 +440,15 @@ class PasswordRecoveryIntegrationTests {
 	}
 
 	private PasswordResetRequest submitRequestForMember() throws Exception {
+		return submitRequestFor(member);
+	}
+
+	private PasswordResetRequest submitRequestFor(Users account) throws Exception {
 		mockMvc.perform(post("/password-reset-requests")
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(emailJson(member.getProfile().getEmail())))
+				.content(emailJson(account.getProfile().getEmail())))
 			.andExpect(status().isOk());
-		return pendingRequestFor(member.getId());
+		return pendingRequestFor(account.getId());
 	}
 
 	private PasswordResetRequest pendingRequestFor(int memberId) {

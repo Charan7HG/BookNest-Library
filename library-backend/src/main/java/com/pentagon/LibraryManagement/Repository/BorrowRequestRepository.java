@@ -21,6 +21,8 @@ public interface BorrowRequestRepository extends JpaRepository<BorrowRequest, In
 
     List<BorrowRequest> findByStatusOrderByRequestedAtAsc(BorrowRequestStatus status);
 
+    boolean existsByBook_IdAndStatus(int bookId, BorrowRequestStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select r from BorrowRequest r where r.id = :id")
     Optional<BorrowRequest> findByIdForUpdate(@Param("id") int id);

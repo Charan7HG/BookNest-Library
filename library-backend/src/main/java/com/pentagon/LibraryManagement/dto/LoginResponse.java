@@ -8,6 +8,7 @@ public class LoginResponse {
     private String name;
     private String email;
     private String role;
+    private boolean passwordChangeRequired;
     private User user;
 
     public String getRole() {
@@ -58,6 +59,14 @@ public class LoginResponse {
         this.email = email;
     }
 
+    public boolean isPasswordChangeRequired() {
+        return passwordChangeRequired;
+    }
+
+    public void setPasswordChangeRequired(boolean passwordChangeRequired) {
+        this.passwordChangeRequired = passwordChangeRequired;
+    }
+
     public User getUser() {
         return user;
     }
@@ -71,6 +80,7 @@ public class LoginResponse {
         private String name;
         private String email;
         private String role;
+        private boolean passwordChangeRequired;
 
         public int getId() {
             return id;
@@ -102,6 +112,14 @@ public class LoginResponse {
 
         public void setRole(String role) {
             this.role = role;
+        }
+
+        public boolean isPasswordChangeRequired() {
+            return passwordChangeRequired;
+        }
+
+        public void setPasswordChangeRequired(boolean passwordChangeRequired) {
+            this.passwordChangeRequired = passwordChangeRequired;
         }
     }
 }

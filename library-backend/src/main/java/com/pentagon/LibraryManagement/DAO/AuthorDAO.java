@@ -23,6 +23,10 @@ public class AuthorDAO {
 	        return author.save(a);
 	    }
 
+	    public Optional<Author> findByNameIgnoreCase(String name) {
+	        return author.findFirstByNameIgnoreCase(name);
+	    }
+
 	    public List<Author> getAllAuthor() {
 	        return author.findAll();
 	    }

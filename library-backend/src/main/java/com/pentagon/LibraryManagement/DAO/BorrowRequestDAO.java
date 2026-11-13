@@ -21,6 +21,10 @@ public class BorrowRequestDAO {
                 memberId, bookId, BorrowRequestStatus.PENDING);
     }
 
+    public boolean existsPendingForBook(int bookId) {
+        return borrowRequestRepository.existsByBook_IdAndStatus(bookId, BorrowRequestStatus.PENDING);
+    }
+
     public List<BorrowRequest> findByMember(int memberId) {
         return borrowRequestRepository.findByMember_IdOrderByRequestedAtDesc(memberId);
     }

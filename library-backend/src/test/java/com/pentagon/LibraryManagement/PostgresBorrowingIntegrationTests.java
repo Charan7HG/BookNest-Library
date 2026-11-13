@@ -34,6 +34,7 @@ import com.pentagon.LibraryManagement.Repository.BorrowRequestRepository;
 import com.pentagon.LibraryManagement.Repository.LoanRepository;
 import com.pentagon.LibraryManagement.Repository.UserRepository;
 import com.pentagon.LibraryManagement.Service.BorrowRequestService;
+import com.pentagon.LibraryManagement.dto.BorrowRequestResponse;
 import com.pentagon.LibraryManagement.entity.Book;
 import com.pentagon.LibraryManagement.entity.BookCopy;
 import com.pentagon.LibraryManagement.entity.BookCopyStatus;
@@ -246,6 +247,115 @@ class PostgresBorrowingIntegrationTests {
         assertEquals(BorrowRequestStatus.PENDING,
                 borrowRequestRepository.findById(request.getId()).orElseThrow().getStatus());
         assertEquals(0, loanRepository.count());
+    }
+
+    /**
+     * End-to-end physical-copy scenario on real PostgreSQL:
+     * two copies -> two approvals -> third request stays PENDING -> return one
+     * copy -> the third request can then be approved with the released copy.
+     */
+    @Test
+    void twoCopiesSupportTwoApprovalsThenThirdStaysPendingAndReturnReleasesCopy() {
+        Users secondMember = account("second-" + UUID.randomUUID() + "@example.test", Role.MEMBER);
+        Users thirdMember = account("third-" + UUID.randomUUID() + "@example.test", Role.MEMBER);
+
+        Book book = book("Postgres Two Copies");
+        BookCopy firstCopy = bookCopyRepository.saveAndFlush(
+                new BookCopy(book, "BK-" + book.getId() + "-1", BookCopyStatus.AVAILABLE));
+        BookCopy secondCopy = bookCopyRepository.saveAndFlush(
+                new BookCopy(book, "BK-" + book.getId() + "-2", BookCopyStatus.AVAILABLE));
+
+        BorrowRequest firstRequest = borrowRequestRepository.saveAndFlush(
+                new BorrowRequest(book, member, Instant.now()));
+        BorrowRequest secondRequest = borrowRequestRepository.saveAndFlush(
+                new BorrowRequest(book, secondMember, Instant.now()));
+        BorrowRequest thirdRequest = borrowRequestRepository.saveAndFlush(
+                new BorrowRequest(book, thirdMember, Instant.now()));
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        librarian.getProfile().getEmail(), null,
+                        List.of(new SimpleGrantedAuthority("ROLE_LIBRARIAN"))));
+
+        logBorrowingState("after three pending requests, before any approval");
+
+        BorrowRequestResponse firstApproval = borrowRequestService.approveRequest(firstRequest.getId());
+        BorrowRequestResponse secondApproval = borrowRequestService.approveRequest(secondRequest.getId());
+
+        logBorrowingState("after two approvals");
+
+        assertEquals("APPROVED", firstApproval.getStatus());
+        assertEquals("APPROVED", secondApproval.getStatus());
+        assertNotNull(firstApproval.getLoanId());
+        assertNotNull(secondApproval.getLoanId());
+        assertEquals(2, loanRepository.findByStatusOrderByIdAsc(LoanStatus.ACTIVE).size());
+        assertEquals(BookCopyStatus.ON_LOAN,
+                bookCopyRepository.findById(firstCopy.getId()).orElseThrow().getStatus());
+        assertEquals(BookCopyStatus.ON_LOAN,
+                bookCopyRepository.findById(secondCopy.getId()).orElseThrow().getStatus());
+
+        BorrowingException noCopy = assertThrows(BorrowingException.class,
+                () -> borrowRequestService.approveRequest(thirdRequest.getId()));
+
+        assertEquals(409, noCopy.getStatus().value());
+        assertEquals("No available copy for this book. The request remains pending.",
+                noCopy.getMessage());
+        assertEquals(BorrowRequestStatus.PENDING,
+                borrowRequestRepository.findById(thirdRequest.getId()).orElseThrow().getStatus());
+
+        logBorrowingState("after third approval attempt with no copy left");
+
+        assertEquals(2, loanRepository.count());
+
+        // Returning the first loan must release exactly that copy.
+        borrowRequestService.returnLoan(firstApproval.getLoanId());
+
+        logBorrowingState("after returning the first loan");
+
+        assertEquals(BookCopyStatus.AVAILABLE,
+                bookCopyRepository.findById(firstCopy.getId()).orElseThrow().getStatus());
+        assertEquals(BookCopyStatus.ON_LOAN,
+                bookCopyRepository.findById(secondCopy.getId()).orElseThrow().getStatus());
+
+        // The released copy can now satisfy the request that stayed pending.
+        BorrowRequestResponse thirdApproval = borrowRequestService.approveRequest(thirdRequest.getId());
+
+        logBorrowingState("after approving the third request with the released copy");
+
+        assertEquals("APPROVED", thirdApproval.getStatus());
+        assertEquals(firstCopy.getId(), thirdApproval.getLoanId() == null
+                ? -1
+                : loanRepository.findById(thirdApproval.getLoanId()).orElseThrow().getCopy().getId());
+        assertEquals(BookCopyStatus.ON_LOAN,
+                bookCopyRepository.findById(firstCopy.getId()).orElseThrow().getStatus());
+        assertEquals(2, loanRepository.findByStatusOrderByIdAsc(LoanStatus.ACTIVE).size());
+        assertEquals(1, loanRepository.findByStatusOrderByIdAsc(LoanStatus.RETURNED).size());
+
+        // Closing assertion kept explicit: the third request is no longer pending.
+        assertEquals(BorrowRequestStatus.APPROVED,
+                borrowRequestRepository.findById(thirdRequest.getId()).orElseThrow().getStatus());
+    }
+
+    private void logBorrowingState(String label) {
+        System.out.println("---- PostgreSQL state: " + label + " ----");
+
+        jdbcTemplate.query("select id, copy_code, status from book_copy order by id", rs -> {
+            System.out.printf("book_copy  id=%d  code=%s  status=%s%n",
+                    rs.getInt("id"), rs.getString("copy_code"), rs.getString("status"));
+        });
+
+        jdbcTemplate.query("select id, copy_id, member_id, status from loan order by id", rs -> {
+            System.out.printf("loan       id=%d  copy_id=%d  member_id=%d  status=%s%n",
+                    rs.getInt("id"), rs.getInt("copy_id"),
+                    rs.getInt("member_id"), rs.getString("status"));
+        });
+
+        jdbcTemplate.query(
+                "select id, member_id, status, loan_id from borrow_request order by id", rs -> {
+                    System.out.printf("borrow_request id=%d  member_id=%d  status=%s  loan_id=%s%n",
+                            rs.getInt("id"), rs.getInt("member_id"),
+                            rs.getString("status"), rs.getObject("loan_id"));
+                });
     }
 
     private Callable<Boolean> approvalTask(int requestId, CountDownLatch start) {

@@ -12,6 +12,7 @@ public class PasswordResetRequestResponse {
     private Integer memberId;
     private String memberName;
     private String memberEmail;
+    private String accountRole;
     private String status;
     private Instant requestedAt;
     private Integer reviewedById;
@@ -48,6 +49,14 @@ public class PasswordResetRequestResponse {
 
     public void setMemberEmail(String memberEmail) {
         this.memberEmail = memberEmail;
+    }
+
+    public String getAccountRole() {
+        return accountRole;
+    }
+
+    public void setAccountRole(String accountRole) {
+        this.accountRole = accountRole;
     }
 
     public String getStatus() {

@@ -18,14 +18,18 @@ public class AuthorService {
 	private AuthorDAO au;
 
 	public ResponseEntity<ResponseStructure<Author>> addAuthor(Author a){
+		if (a == null || a.getName() == null || a.getName().isBlank()) {
+			return authorResponse(HttpStatus.BAD_REQUEST, "Author name is required", null);
+		}
+
+		String name = a.getName().trim();
+		if (au.findByNameIgnoreCase(name).isPresent()) {
+			return authorResponse(HttpStatus.CONFLICT, "An author with this name already exists", null);
+		}
+
+		a.setName(name);
 		Author author=au.addAuthor(a);
-
-		ResponseStructure<Author> response = new ResponseStructure<Author>();
-		response.setStatuscode(HttpStatus.CREATED.value());
-		response.setMessage("author added...!");
-		response.setData(author);
-		return new ResponseEntity<ResponseStructure<Author>>(response,HttpStatus.CREATED);
-
+		return authorResponse(HttpStatus.CREATED, "author added...!", author);
 	}
 
 	public ResponseEntity<ResponseStructure<List<Author>>> getAllAuthor(){
@@ -93,6 +97,17 @@ public class AuthorService {
 
 	public ResponseEntity<ResponseStructure<Author>> updateAuthor( int id,Author author)  {
 
+	    if (author == null || author.getName() == null || author.getName().isBlank()) {
+	        return authorResponse(HttpStatus.BAD_REQUEST, "Author name is required", null);
+	    }
+
+	    String name = author.getName().trim();
+	    Author duplicate = au.findByNameIgnoreCase(name).orElse(null);
+	    if (duplicate != null && duplicate.getId() != id) {
+	        return authorResponse(HttpStatus.CONFLICT, "An author with this name already exists", null);
+	    }
+	    author.setName(name);
+
 	    Author updatedAuthor = au.updateAuthor(id,author);
 
 	    ResponseStructure<Author> response = new ResponseStructure<>();
@@ -141,4 +156,13 @@ public class AuthorService {
 
 		    }
 		}
+
+	private ResponseEntity<ResponseStructure<Author>> authorResponse(
+			HttpStatus status, String message, Author author) {
+		ResponseStructure<Author> response = new ResponseStructure<Author>();
+		response.setStatuscode(status.value());
+		response.setMessage(message);
+		response.setData(author);
+		return new ResponseEntity<ResponseStructure<Author>>(response, status);
+	}
 }

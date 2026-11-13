@@ -32,4 +32,16 @@ public class BookCopyDAO {
     public BookCopy save(BookCopy copy) {
         return bookCopyRepository.save(copy);
     }
+
+    public long countTotalForBook(int bookId) {
+        return bookCopyRepository.countByBook_Id(bookId);
+    }
+
+    public long countForBookWithStatus(int bookId, BookCopyStatus status) {
+        return bookCopyRepository.countByBook_IdAndStatus(bookId, status);
+    }
+
+    public void deleteAllForBook(int bookId) {
+        bookCopyRepository.deleteByBookId(bookId);
+    }
 }

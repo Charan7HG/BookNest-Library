@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pentagon.LibraryManagement.DataTransferObjectDTO.ResponseStructure;
 import com.pentagon.LibraryManagement.Service.BookService;
+import com.pentagon.LibraryManagement.dto.BookCreateRequest;
 import com.pentagon.LibraryManagement.entity.Book;
 
 @RestController
@@ -24,7 +25,7 @@ public class BookController {
 	private BookService bs;
 
 	@PostMapping("/book")
-	public ResponseEntity<ResponseStructure<Book>>addBook(@RequestBody Book b){
+	public ResponseEntity<ResponseStructure<Book>>addBook(@RequestBody BookCreateRequest b){
 
 		return bs.addBook(b);
 	}

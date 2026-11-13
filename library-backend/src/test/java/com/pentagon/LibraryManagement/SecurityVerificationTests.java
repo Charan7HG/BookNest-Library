@@ -39,6 +39,7 @@ import com.pentagon.LibraryManagement.Service.BookService;
 import com.pentagon.LibraryManagement.Service.CategoryService;
 import com.pentagon.LibraryManagement.Service.ProfileService;
 import com.pentagon.LibraryManagement.Service.UsersService;
+import com.pentagon.LibraryManagement.dto.BookCreateRequest;
 import com.pentagon.LibraryManagement.entity.Author;
 import com.pentagon.LibraryManagement.entity.Book;
 import com.pentagon.LibraryManagement.entity.Category;
@@ -252,7 +253,7 @@ class SecurityVerificationTests {
 	@Test
 	void librarianCanCreateUpdateAndDeleteBooks() throws Exception {
 		String token = tokenFor("librarian@example.com", Role.LIBRARIAN);
-		when(bookService.addBook(any(Book.class))).thenReturn(bookCreated());
+		when(bookService.addBook(any(BookCreateRequest.class))).thenReturn(bookCreated());
 		when(bookService.updateBook(anyInt(), any(Book.class))).thenReturn(bookOk());
 		when(bookService.deleteBook(anyInt())).thenReturn(bookOk());
 

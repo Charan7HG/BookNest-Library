@@ -3,12 +3,12 @@ import Layout from "../ccomponents/Layout";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getBookById, updateBook } from "../ccomponents/service/BookService";
 import { toast } from "react-toastify";
-import { getAllUsers } from "../ccomponents/service/UserService";
 import { getAllAuthors } from "../ccomponents/service/AuthorService";
 import { getAllCategories } from "../ccomponents/service/CategoryService";
-import { hasAnyRole } from "../ccomponents/service/AuthService";
 import Spinner from "../ccomponents/Spinner";
 import "./Forms.css";
+
+const EARLIEST_PUBLISHED_YEAR = 1000;
 
 const EditBook = () => {
   const { id } = useParams();
@@ -19,41 +19,32 @@ const EditBookForm = ({ id }) => {
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
-  const [users, setUsers] = useState([]);
-  const [selectedUser, setSelectedUser] = useState("");
-  const [assignedUserName, setAssignedUserName] = useState("");
+  const [publishedYear, setPublishedYear] = useState("");
+  const [language, setLanguage] = useState("");
   const [selectedAuthor, setSelectedAuthor] = useState("");
   const [authors, setAuthors] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [copyCounts, setCopyCounts] = useState({
+    totalCopies: 0,
+    availableCopies: 0,
+    onLoanCopies: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState("");
 
-  const canAssignUser = hasAnyRole("ADMIN");
+  const latestPublishedYear = new Date().getFullYear() + 1;
 
   useEffect(() => {
     let active = true;
 
-    const fetchUsers = async () => {
-      if (!canAssignUser) {
-        return;
-      }
-
-      try {
-        const response = await getAllUsers();
-        if (active) setUsers(response.data.data);
-      } catch (error) {
-        if (active) {
-          toast.error(error.response?.data?.message || "Failed to Load Users");
-        }
-      }
-    };
-
     const fetchAuthors = async () => {
       try {
         const response = await getAllAuthors();
-        if (active) setAuthors(response.data.data);
+        if (active) setAuthors(response.data.data || []);
       } catch (error) {
         if (active) {
           toast.error(error.response?.data?.message || "Failed to Load Authors");
@@ -64,7 +55,7 @@ const EditBookForm = ({ id }) => {
     const fetchCategories = async () => {
       try {
         const response = await getAllCategories();
-        if (active) setCategories(response.data.data);
+        if (active) setCategories(response.data.data || []);
       } catch (error) {
         if (active) {
           toast.error(error.response?.data?.message || "Failed to Load Categories");
@@ -72,14 +63,13 @@ const EditBookForm = ({ id }) => {
       }
     };
 
-    fetchUsers();
     fetchAuthors();
     fetchCategories();
 
     return () => {
       active = false;
     };
-  }, [canAssignUser]);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -95,14 +85,20 @@ const EditBookForm = ({ id }) => {
         }
 
         if (active) {
-          setName(book.name);
-          setPrice(book.price);
+          setName(book.name || "");
+          setDescription(book.description || "");
+          setPrice(book.price ?? "");
+          setPublishedYear(book.publishedYear ?? "");
+          setLanguage(book.language || "");
           setSelectedAuthor(book.author?.id || "");
-          setSelectedUser(book.users?.id || "");
-          setAssignedUserName(book.users?.name || "");
           setSelectedCategories(
             book.category ? book.category.map((category) => category.id) : []
           );
+          setCopyCounts({
+            totalCopies: book.totalCopies ?? 0,
+            availableCopies: book.availableCopies ?? 0,
+            onLoanCopies: book.onLoanCopies ?? 0,
+          });
         }
       } catch (error) {
         if (active) {
@@ -133,27 +129,62 @@ const EditBookForm = ({ id }) => {
   const handleUpdate = async (event) => {
     event.preventDefault();
 
-    if (
-      name.trim() === "" ||
-      price === "" ||
-      selectedAuthor === "" ||
-      selectedCategories.length === 0 ||
-      (canAssignUser && selectedUser === "")
-    ) {
-      toast.warning("Please Fill All Required Fields");
+    if (!name.trim()) {
+      setFormError("Book name is required.");
+      toast.warning("Book name is required.");
       return;
     }
 
+    if (price === "" || Number.isNaN(Number(price)) || Number(price) < 0) {
+      setFormError("Price must be zero or greater.");
+      toast.warning("Price must be zero or greater.");
+      return;
+    }
+
+    const year = Number(publishedYear);
+    if (
+      publishedYear === "" ||
+      !Number.isInteger(year) ||
+      year < EARLIEST_PUBLISHED_YEAR ||
+      year > latestPublishedYear
+    ) {
+      const message = `Published year must be a whole number between ${EARLIEST_PUBLISHED_YEAR} and ${latestPublishedYear}.`;
+      setFormError(message);
+      toast.warning(message);
+      return;
+    }
+
+    if (!language.trim()) {
+      setFormError("Language is required.");
+      toast.warning("Language is required.");
+      return;
+    }
+
+    if (selectedAuthor === "") {
+      setFormError("Please select an author.");
+      toast.warning("Please select an author.");
+      return;
+    }
+
+    if (selectedCategories.length === 0) {
+      setFormError("Please select at least one category.");
+      toast.warning("Please select at least one category.");
+      return;
+    }
+
+    setFormError("");
     setSaving(true);
 
     try {
       const book = {
         name: name.trim(),
+        description: description.trim(),
         price: Number(price),
+        publishedYear: Number(publishedYear),
+        language: language.trim(),
         author: {
           id: Number(selectedAuthor),
         },
-        users: selectedUser ? { id: Number(selectedUser) } : null,
         category: selectedCategories.map((categoryId) => ({
           id: Number(categoryId),
         })),
@@ -164,7 +195,9 @@ const EditBookForm = ({ id }) => {
       toast.success("Book Updated Successfully");
       navigate("/books");
     } catch (error) {
-      toast.error(error.response?.data?.message || "Update Failed");
+      const message = error.response?.data?.message || "Update Failed";
+      setFormError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -184,7 +217,13 @@ const EditBookForm = ({ id }) => {
         <h1>Update Book</h1>
       </div>
 
-      <form className="form-container" onSubmit={handleUpdate}>
+      <form className="form-container" onSubmit={handleUpdate} noValidate>
+        {formError && (
+          <p className="form-error" role="alert">
+            {formError}
+          </p>
+        )}
+
         <div className="form-group">
           <label htmlFor="edit-book-name">Book Name</label>
           <input
@@ -197,6 +236,16 @@ const EditBookForm = ({ id }) => {
         </div>
 
         <div className="form-group">
+          <label htmlFor="edit-book-description">Description</label>
+          <textarea
+            id="edit-book-description"
+            rows="3"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div className="form-group">
           <label htmlFor="edit-book-price">Price</label>
           <input
             id="edit-book-price"
@@ -205,6 +254,31 @@ const EditBookForm = ({ id }) => {
             step="0.01"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="edit-book-published-year">Published Year</label>
+          <input
+            id="edit-book-published-year"
+            type="number"
+            min={EARLIEST_PUBLISHED_YEAR}
+            max={latestPublishedYear}
+            step="1"
+            value={publishedYear}
+            onChange={(e) => setPublishedYear(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="edit-book-language">Language</label>
+          <input
+            id="edit-book-language"
+            type="text"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
             required
           />
         </div>
@@ -227,31 +301,13 @@ const EditBookForm = ({ id }) => {
           </select>
         </div>
 
-        {canAssignUser ? (
-          <div className="form-group">
-            <label htmlFor="edit-book-user">Assign to User</label>
-            <select
-              id="edit-book-user"
-              value={selectedUser}
-              onChange={(e) => setSelectedUser(e.target.value)}
-              required
-            >
-              <option value="">Select User</option>
-
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
+        <div className="form-group">
+          <p className="form-group-label">Copies (read-only)</p>
           <p className="form-hint">
-            {assignedUserName
-              ? `Currently assigned to ${assignedUserName}. Borrower changes are managed by an administrator.`
-              : "This book is not assigned to a user. Borrower changes are managed by an administrator."}
+            Total: {copyCounts.totalCopies} | Available:{" "}
+            {copyCounts.availableCopies} | On Loan: {copyCounts.onLoanCopies}
           </p>
-        )}
+        </div>
 
         <div className="form-group">
           <p className="form-group-label">Categories</p>

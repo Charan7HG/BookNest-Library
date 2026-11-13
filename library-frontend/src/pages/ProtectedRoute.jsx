@@ -1,6 +1,10 @@
 import { Link, Navigate, useLocation } from "react-router-dom";
 import Layout from "../ccomponents/Layout";
-import { getStoredUser, isAuthenticated } from "../ccomponents/service/AuthService";
+import {
+    getStoredUser,
+    isAuthenticated,
+    isPasswordChangeRequired,
+} from "../ccomponents/service/AuthService";
 
 const AccessDenied = () => (
     <Layout>
@@ -17,6 +21,15 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
     if (!isAuthenticated()) {
         return <Navigate to="/login" replace state={{ from: location }} />;
+    }
+
+    // Temporary-password users may only open Change Password. Every other
+    // protected page sends them back there until the password is changed.
+    if (
+        isPasswordChangeRequired() &&
+        location.pathname !== "/change-password"
+    ) {
+        return <Navigate to="/change-password" replace />;
     }
 
     if (allowedRoles && allowedRoles.length > 0) {

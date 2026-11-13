@@ -32,12 +32,12 @@
 
 .book-table--books th:nth-child(1),
 .book-table--books td:nth-child(1) {
-    width: 6%;
+    width: 5%;
 }
 
 .book-table--books th:nth-child(2),
 .book-table--books td:nth-child(2) {
-    width: 20%;
+    width: 18%;
 }
 
 .book-table--books th:nth-child(3),
@@ -47,22 +47,27 @@
 
 .book-table--books th:nth-child(4),
 .book-table--books td:nth-child(4) {
-    width: 13%;
+    width: 14%;
 }
 
 .book-table--books th:nth-child(5),
 .book-table--books td:nth-child(5) {
-    width: 13%;
+    width: 9%;
 }
 
 .book-table--books th:nth-child(6),
 .book-table--books td:nth-child(6) {
-    width: 17%;
+    width: 10%;
 }
 
 .book-table--books th:nth-child(7),
 .book-table--books td:nth-child(7) {
-    width: 23%;
+    width: 9%;
+}
+
+.book-table--books th:nth-child(8),
+.book-table--books td:nth-child(8) {
+    width: 27%;
 }
 
 .book-table th {

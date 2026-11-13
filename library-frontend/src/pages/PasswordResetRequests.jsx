@@ -10,6 +10,7 @@ import {
   rejectPasswordResetRequest,
 } from "../ccomponents/service/PasswordResetService";
 import { formatDateTime, getErrorMessage } from "../ccomponents/borrowUtils";
+import { getStoredUser } from "../ccomponents/service/AuthService";
 import { toast } from "react-toastify";
 import "./Books.css";
 
@@ -22,6 +23,28 @@ const PasswordResetRequests = () => {
   // Kept in component state only. Never write this to localStorage,
   // sessionStorage, the URL, or any other persistent storage.
   const [temporaryPassword, setTemporaryPassword] = useState(null);
+
+  const currentUser = getStoredUser();
+  const currentRole = currentUser?.role;
+
+  // Mirrors the backend matrix so the UI never offers an action the server
+  // would reject: ADMIN handles MEMBER and LIBRARIAN requests, while a
+  // LIBRARIAN handles MEMBER requests only and never their own account.
+  const canProcess = (request) => {
+    if (!request || request.memberId === currentUser?.id) {
+      return false;
+    }
+
+    if (currentRole === "ADMIN") {
+      return request.accountRole === "MEMBER" || request.accountRole === "LIBRARIAN";
+    }
+
+    if (currentRole === "LIBRARIAN") {
+      return request.accountRole === "MEMBER";
+    }
+
+    return false;
+  };
 
   const loadRequests = useCallback(
     async (showSpinner = true) => {
@@ -189,10 +212,9 @@ const PasswordResetRequests = () => {
       </div>
 
       <p className="borrow-hint">
-        Members submit requests from the login page. Approving a request
-        generates a temporary password that must be shared securely and changed
-        by the member after login. Rejecting never changes the member&apos;s
-        password.
+        {currentRole === "ADMIN"
+          ? "ADMIN reviews both MEMBER and LIBRARIAN requests. Approving generates a one-time temporary password; rejecting never changes the password."
+          : "LIBRARIAN reviews MEMBER requests only. LIBRARIAN password requests are handled by an ADMIN. Approving generates a one-time temporary password."}
       </p>
 
       <div className="table-scroll">
@@ -200,6 +222,7 @@ const PasswordResetRequests = () => {
           <thead>
             <tr>
               <th>Member</th>
+              <th>Account</th>
               <th>Requested</th>
               <th>Status</th>
               <th>Reviewed By</th>
@@ -211,7 +234,7 @@ const PasswordResetRequests = () => {
           <tbody>
             {requests.length === 0 ? (
               <tr>
-                <td colSpan={queue === "pending" ? 6 : 5}>
+                <td colSpan={queue === "pending" ? 7 : 6}>
                   {queue === "pending"
                     ? "No pending password reset requests."
                     : "No password reset request history yet."}
@@ -227,6 +250,11 @@ const PasswordResetRequests = () => {
                         {request.memberEmail}
                       </span>
                     )}
+                  </td>
+                  <td>
+                    <span className="role-pill">
+                      {request.accountRole || "UNKNOWN"}
+                    </span>
                   </td>
                   <td className="nowrap">
                     {formatDateTime(request.requestedAt)}
@@ -245,24 +273,32 @@ const PasswordResetRequests = () => {
                   </td>
                   {queue === "pending" && (
                     <td className="nowrap">
-                      <div className="action-buttons">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDialog({ request, action: "approve" })
-                          }
-                        >
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setDialog({ request, action: "reject" })
-                          }
-                        >
-                          Reject
-                        </button>
-                      </div>
+                      {canProcess(request) ? (
+                        <div className="action-buttons">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDialog({ request, action: "approve" })
+                            }
+                          >
+                            Approve
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDialog({ request, action: "reject" })
+                            }
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="detail-note">
+                          {request.memberId === currentUser?.id
+                            ? "Own account — use Change Password"
+                            : "ADMIN review required"}
+                        </span>
+                      )}
                     </td>
                   )}
                 </tr>
